@@ -11,6 +11,7 @@
 [Ll]og/
 [Ll]ogs/
 .settings/
+.launch
 
 # Visual Studio cache/options directory
 .vs/

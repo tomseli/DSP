@@ -38,20 +38,20 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint32_t teller;
-int adc_values[4096];
+int adc_values[1000];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_ADC1_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -89,9 +89,16 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_ADC1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-  HAL_ADC_Start_IT(&hadc1);
+
+  // ADC start
+//  HAL_ADC_Start_IT(&hadc1);
+
+  HAL_TIM_Base_Start_IT(&htim3);
+
+  UART_string("Ended startup \n");
+  // Timer start
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -142,7 +149,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV16;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
@@ -151,54 +158,47 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief ADC1 Initialization Function
+  * @brief TIM3 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_ADC1_Init(void)
+static void MX_TIM3_Init(void)
 {
 
-  /* USER CODE BEGIN ADC1_Init 0 */
+  /* USER CODE BEGIN TIM3_Init 0 */
 
-  /* USER CODE END ADC1_Init 0 */
+  /* USER CODE END TIM3_Init 0 */
 
-  ADC_ChannelConfTypeDef sConfig = {0};
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN ADC1_Init 1 */
+  /* USER CODE BEGIN TIM3_Init 1 */
 
-  /* USER CODE END ADC1_Init 1 */
-
-  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-  */
-  hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 2-1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 48000;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
   }
-
-  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-  */
-  sConfig.Channel = ADC_CHANNEL_11;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN ADC1_Init 2 */
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
 
-  /* USER CODE END ADC1_Init 2 */
+  /* USER CODE END TIM3_Init 2 */
 
 }
 
@@ -222,7 +222,7 @@ static void MX_USART2_UART_Init(void)
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.Mode = UART_MODE_TX;
   huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart2.Init.OverSampling = UART_OVERSAMPLING_16;
   if (HAL_UART_Init(&huart2) != HAL_OK)
@@ -253,38 +253,54 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 // Move this later
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc1)
+//void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc1)
+//{
+//	if(teller > 4096)
+//	{
+//		teller = 0;
+//		UART_char('\n');
+//		UART_string("Start dump");
+//		UART_char('\n');
+//
+//		for(uint32_t i = 0; i < 4096; i++)
+//		{
+//			UART_int(adc_values[i]);
+//			UART_char(',');
+//			UART_char('\n');
+//		}
+//		UART_string("End dump \n");
+//	}
+//
+//	else
+//	{
+//		adc_values[teller] = HAL_ADC_GetValue(hadc1);
+//		teller++;
+//	}
+//
+//	// zet de ADC opnieuw aan.
+//	HAL_ADC_Start_IT(hadc1);
+//
+//	/**
+//	 * Idee voor later:
+//	 * ADC op continue;
+//	 * hardware timer voor uitlezen.
+//	 */
+//}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
-	if(teller > 4096)
+	if(htim == &htim3)
 	{
-		teller = 0;
-		UART_char('\n');
-		UART_string("Start dump");
-		UART_char('\n');
-
-		for(uint32_t i = 0; i < 4096; i++)
+		if(teller > 1000)
 		{
-			UART_int(adc_values[i]);
-			UART_char(',');
-			UART_char('\n');
+			teller = 0;
+			UART_string("1000 hits elapsed.\n");
 		}
-		UART_string("End dump \n");
+		else
+		{
+			teller++;
+		}
 	}
-
-	else
-	{
-		adc_values[teller] = HAL_ADC_GetValue(hadc1);
-		teller++;
-	}
-
-	// zet de ADC opnieuw aan.
-	HAL_ADC_Start_IT(hadc1);
-
-	/**
-	 * Idee voor later:
-	 * ADC op continue;
-	 * hardware timer voor uitlezen.
-	 */
 }
 
 /* USER CODE END 4 */
