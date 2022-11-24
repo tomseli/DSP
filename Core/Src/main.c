@@ -21,11 +21,16 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "header.h"
+#include  <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+//void Put_DA(unsigned char channel,unsigned short load);
+//uint32_t DWT_Delay_Init(void);
+//__STATIC_INLINE void DWT_Delay_us(volatile uint32_t au32_microseconds);
+//void Put__DA(unsigned short chan_A,unsigned short chan_B);
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -40,14 +45,14 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
+SPI_HandleTypeDef hspi1;
+
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint32_t teller;
-uint16_t pos;
-int adc_values[1000];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -56,6 +61,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -95,12 +101,15 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM3_Init();
   MX_ADC1_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
   // ADC start
   HAL_ADC_Start(&hadc1);
 
   HAL_TIM_Base_Start_IT(&htim3);
+
+  Set_sample_frequency(TIMERFREQ);
 
   UART_string("Ended startup \n");
   // Timer start
@@ -215,6 +224,44 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
@@ -299,50 +346,155 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(led_GPIO_Port, led_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, idac_Pin|GPIO_PIN_7, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : PE3 PE4 PE5 PE6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : led_Pin */
+  GPIO_InitStruct.Pin = led_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(led_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : idac_Pin PB7 */
+  GPIO_InitStruct.Pin = idac_Pin|GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
 /* USER CODE BEGIN 4 */
 
-// Move this later
-//void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc1)
-//{
-//	/**
-//	 * Idee voor later:
-//	 * ADC op continue;
-//	 * hardware timer voor uitlezen.
-//	 */
-//}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+/*******************************************************************/
+/*   put_DA written by J.F. van der Bent
+ *   2 aguments 0 -> select channel A 1 select channel B
+ *   load 0-4096
+ *   no return
+ *   uses DWT_Delay_us function for holdoff LDAC
+ *   date 12 sept 2022
+ *   version 1.0
+ */
+void Put_DA(unsigned char channel,unsigned short load)
 {
-	if(htim == &htim3)
-	{
-		if(pos > (1000-1))
-		{
-			UART_string("Starting dump: \n\n");
-			pos = 0;
-			for(int i = 0; i < (sizeof(adc_values)-1); i++)
-			{
-				UART_int(adc_values[i]);
-				UART_string(", \n");
-			}
-			UART_string("Ending dump: \n\n");
-		}
-		else
-		{
-			adc_values[pos] = HAL_ADC_GetValue(&hadc1);
-			pos++;
-		}
-		HAL_ADC_Start(&hadc1);
-	}
+	 unsigned char data[2]={0x30,0x00}; // default unbuffered | Gain 1x |  active mode
+	 data[1] = load & 0x00FF;
+	 data[0] = data[0]|(load & 0x0F00)>>8;
+	 unsigned char *point = data ; // place truncated load over both bytes
+
+	 if (channel)
+		 {
+		 data[0] = data[0]|1<<7;			// set bit 7 default channel A if set channel B
+		 }
+
+	 HAL_GPIO_WritePin(SS1_GPIO_Port, SS1_Pin, GPIO_PIN_RESET);
+	 HAL_SPI_Transmit(&hspi1, point, 2, 1000);	// send DA data over SPI
+	 HAL_GPIO_WritePin(GPIOB, ldac_Pin, GPIO_PIN_RESET);
+	 DWT_Delay_us(10);		// settling time signal + PCB cap
+	 HAL_GPIO_WritePin(GPIOB, ldac_Pin, GPIO_PIN_SET);
+	 HAL_GPIO_WritePin(SS1_GPIO_Port, SS1_Pin, GPIO_PIN_SET);
+
 }
 
+/*******************************************************************/
+/*   put__DA written by J.F. van der Bent
+ *   2 aguments  channel A load 0-4095 channel B load 0-4095
+ *   no output
+ *   uses DWT_Delay_us function for holdoff LDAC
+ *   date 12 sept 2022
+ *   version 1.0
+ */
+void Put__DA(unsigned short chan_A,unsigned short chan_B) // both channels
+{
+	 unsigned char data_A[2]={0x30,0x00}; // default unbuffered | Gain 1x |  active mode
+	 unsigned char data_B[2]={0x30,0x00}; // default unbuffered | Gain 1x |  active mode
+
+	 	 data_A[1] = chan_A & 0x00FF;
+		 data_A[0] = data_A[0]|(chan_A & 0x0F00)>>8;
+		 unsigned char *point_A = data_A ; // place truncated load over both bytes
+		 data_B[1] = chan_B & 0x00FF;
+		 data_B[0] = data_B[0]|(chan_B & 0x0F00)>>8;
+		 unsigned char *point_B = data_B ; // place truncated load over both bytes
+
+
+		 data_B[0] = data_B[0]|1<<7;			// Select channel B
+
+
+		 HAL_GPIO_WritePin(SS1_GPIO_Port, SS1_Pin, GPIO_PIN_RESET);
+		 HAL_SPI_Transmit(&hspi1, point_A, 2, 1000);	// send DA data over SPI
+		 HAL_GPIO_WritePin(SS1_GPIO_Port, SS1_Pin, GPIO_PIN_SET);
+		 HAL_GPIO_WritePin(SS1_GPIO_Port, SS1_Pin, GPIO_PIN_RESET);
+		 HAL_SPI_Transmit(&hspi1, point_B, 2, 1000);	// send DA data over SPI
+		 HAL_GPIO_WritePin(SS1_GPIO_Port, SS1_Pin, GPIO_PIN_SET);
+
+
+		 HAL_GPIO_WritePin(GPIOB, ldac_Pin, GPIO_PIN_RESET);
+		 DWT_Delay_us(10);		// settling time signal + PCB cap
+		 HAL_GPIO_WritePin(GPIOB, ldac_Pin, GPIO_PIN_SET);
+
+
+}
+__STATIC_INLINE void DWT_Delay_us(volatile uint32_t au32_microseconds)
+{
+  uint32_t au32_initial_ticks = DWT->CYCCNT;
+  uint32_t au32_ticks = (HAL_RCC_GetHCLKFreq() / 1000000);
+  au32_microseconds *= au32_ticks;
+  while ((DWT->CYCCNT - au32_initial_ticks) < au32_microseconds-au32_ticks);
+}
+uint32_t DWT_Delay_Init(void)
+{
+    /* Disable TRC */
+    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
+    /* Enable TRC */
+    CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
+
+    /* Disable clock cycle counter */
+    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
+    /* Enable  clock cycle counter */
+    DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
+
+    /* Reset the clock cycle counter value */
+    DWT->CYCCNT = 0;
+
+    /* 3 NO OPERATION instructions */
+    __ASM volatile ("NOP");
+    __ASM volatile ("NOP");
+    __ASM volatile ("NOP");
+
+    /* Check if clock cycle counter has started */
+    if(DWT->CYCCNT)
+    {
+       return 0; /*clock cycle counter started*/
+    }
+    else
+    {
+      return 1; /*clock cycle counter not started*/
+    }
+}
 /* USER CODE END 4 */
 
 /**
