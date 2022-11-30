@@ -14,9 +14,9 @@
 #define SS1_GPIO_Port GPIOB
 
 // convert.c
-#define TIMERFREQ 20000
+#define TIMERFREQ 5120
 
-#define BUFFERSIZE 1024
+#define BUFFERSIZE 512
 #define MA_KERNELSIZE 10
 #define OFFSET 0
 #define PI 3.141593

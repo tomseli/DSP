@@ -39,22 +39,33 @@ void ADC_init()
  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
-	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12); //timer freq debug, groen lampie, pin pd12
-//	volatile int i;
-	if(htim == &htim3) // ADC
+	// timer freq debug, groen lampie, pin pd12
+	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
+
+	// ADC
+	if(htim == &htim3)
 	{
 		pos++;
+
+		// vul buffer met waardes uit de adc
 		adc_values[pos % BUFFERSIZE] = HAL_ADC_GetValue(&hadc1);
+
+		// voor debug: analoog signaal voor op de oscilloscoop, output L
 		Put_DA((unsigned char) 1, magnitude[pos%(BUFFERSIZE/2)]);
+		// duur draadje
+		Put_DA((unsigned char) 0, adc_values[pos%BUFFERSIZE]);
+
+		// elke keer dat de adc vol zit met nieuwe waarde flaggetje aan voor dft in main
 		if(pos%(BUFFERSIZE/2)==0)
 		{
-//			DFT();
 			flag = 1;
+
+			// sync puls voor debug op de oscilloscoop.
 			for(int i = 0; i < 20; i++)
 				Put_DA((unsigned char) 1, 4000);
 		}
 
-		dsp_output = 0;
+		// geef de adc opnieuw een schop om te gaan meten.
 		HAL_ADC_Start(&hadc1);
 	}
 }
@@ -78,17 +89,21 @@ unsigned short DFT()
 	float ImX[BUFFERSIZE/2+1];
 	float ReX[BUFFERSIZE/2+1];
 
+	// zet pd13, orangje lampje om runtime bij te houden
 	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
-	// maak een nieuwe buffer
+
+	// maak een nieuwe buffer omdat de globale buffer blijft updaten
 	for(i = 0;i < BUFFERSIZE; i++)
 	{
 		input_signal[i] = (adc_values[i]-2048.0)/4096.0;
 	}
 
+	// de DFT zelf
 	for(i = 0; i < BUFFERSIZE/2+1; i++)
 	{
 		ReX[i] = 0;
 		ImX[i] = 0;
+
 		for(j = 0; j < BUFFERSIZE/2+1; j++)
 		{
 			ImX[i] += sinus[(i*j)%BUFFERSIZE] * input_signal[j];
@@ -98,12 +113,13 @@ unsigned short DFT()
 		ReX[i] /= (BUFFERSIZE/2);
 		magnitude[i] = sqrtf(powf(ImX[i], 2) + powf(ReX[i], 2))*4000;
 	}
-//	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
-	return 0;
+
+	return 1;
 }
 
 void CreateWaves()
 {
+	//creeer (co)sinus voor een LUT
 	for(int i = 0; i < BUFFERSIZE; i++)
 	{
 		sinus[i] = sin(2*PI/BUFFERSIZE*i);
