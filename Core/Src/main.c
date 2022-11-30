@@ -52,7 +52,9 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+float cosinus[BUFFERSIZE];
+float sinus[BUFFERSIZE];
+char flag = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,7 +80,7 @@ static void MX_SPI1_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	CreateWaves();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -122,6 +124,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if(flag)
+	  {
+		  flag = 0;
+		  DFT();
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -282,7 +289,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 2-1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 48000;
+  htim3.Init.Period = 2000-1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -360,7 +367,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(led_GPIO_Port, led_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, led_Pin|GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, idac_Pin|GPIO_PIN_7, GPIO_PIN_RESET);
@@ -372,12 +379,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : led_Pin */
-  GPIO_InitStruct.Pin = led_Pin;
+  /*Configure GPIO pins : led_Pin PD13 */
+  GPIO_InitStruct.Pin = led_Pin|GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(led_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : idac_Pin PB7 */
   GPIO_InitStruct.Pin = idac_Pin|GPIO_PIN_7;
@@ -414,7 +421,8 @@ void Put_DA(unsigned char channel,unsigned short load)
 	 HAL_GPIO_WritePin(SS1_GPIO_Port, SS1_Pin, GPIO_PIN_RESET);
 	 HAL_SPI_Transmit(&hspi1, point, 2, 1000);	// send DA data over SPI
 	 HAL_GPIO_WritePin(GPIOB, ldac_Pin, GPIO_PIN_RESET);
-	 DWT_Delay_us(10);		// settling time signal + PCB cap
+//	 DWT_Delay_us(10);		// settling time signal + PCB cap
+//	 HAL_Delay(5);
 	 HAL_GPIO_WritePin(GPIOB, ldac_Pin, GPIO_PIN_SET);
 	 HAL_GPIO_WritePin(SS1_GPIO_Port, SS1_Pin, GPIO_PIN_SET);
 
@@ -458,43 +466,43 @@ void Put__DA(unsigned short chan_A,unsigned short chan_B) // both channels
 
 
 }
-__STATIC_INLINE void DWT_Delay_us(volatile uint32_t au32_microseconds)
-{
-  uint32_t au32_initial_ticks = DWT->CYCCNT;
-  uint32_t au32_ticks = (HAL_RCC_GetHCLKFreq() / 1000000);
-  au32_microseconds *= au32_ticks;
-  while ((DWT->CYCCNT - au32_initial_ticks) < au32_microseconds-au32_ticks);
-}
-uint32_t DWT_Delay_Init(void)
-{
-    /* Disable TRC */
-    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
-    /* Enable TRC */
-    CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
-
-    /* Disable clock cycle counter */
-    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
-    /* Enable  clock cycle counter */
-    DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
-
-    /* Reset the clock cycle counter value */
-    DWT->CYCCNT = 0;
-
-    /* 3 NO OPERATION instructions */
-    __ASM volatile ("NOP");
-    __ASM volatile ("NOP");
-    __ASM volatile ("NOP");
-
-    /* Check if clock cycle counter has started */
-    if(DWT->CYCCNT)
-    {
-       return 0; /*clock cycle counter started*/
-    }
-    else
-    {
-      return 1; /*clock cycle counter not started*/
-    }
-}
+//void DWT_Delay_us(volatile uint32_t au32_microseconds)
+//{
+//  uint32_t au32_initial_ticks = DWT->CYCCNT;
+//  uint32_t au32_ticks = (HAL_RCC_GetHCLKFreq() / 1000000);
+//  au32_microseconds *= au32_ticks;
+//  while ((DWT->CYCCNT - au32_initial_ticks) < au32_microseconds-au32_ticks);
+//}
+//uint32_t DWT_Delay_Init(void)
+//{
+//    /* Disable TRC */
+//    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
+//    /* Enable TRC */
+//    CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
+//
+//    /* Disable clock cycle counter */
+//    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
+//    /* Enable  clock cycle counter */
+//    DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
+//
+//    /* Reset the clock cycle counter value */
+//    DWT->CYCCNT = 0;
+//
+//    /* 3 NO OPERATION instructions */
+//    __ASM volatile ("NOP");
+//    __ASM volatile ("NOP");
+//    __ASM volatile ("NOP");
+//
+//    /* Check if clock cycle counter has started */
+//    if(DWT->CYCCNT)
+//    {
+//       return 0; /*clock cycle counter started*/
+//    }
+//    else
+//    {
+//      return 1; /*clock cycle counter not started*/
+//    }
+//}
 /* USER CODE END 4 */
 
 /**

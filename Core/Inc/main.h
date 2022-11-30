@@ -32,6 +32,7 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "UART.h"
+#include "header.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
