@@ -14,24 +14,31 @@
 #define SS1_GPIO_Port GPIOB
 
 // convert.c
-#define TIMERFREQ 5120
+#define TIMERFREQ 20000
 
-#define BUFFERSIZE 512
-#define MA_KERNELSIZE 10
+#define BUFFERSIZE 83 // max so far 70
+#define BUFFERHALF 41  // vul in: (buffersize-1)/2
+#define MAF_KERNELSIZE 10
 #define OFFSET 0
 #define PI 3.141593
+#define FREQUENCYCUTOFF 0.01 // fraction of samplerate
 
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim3;
 
 extern float sinus[BUFFERSIZE];
 extern float cosinus[BUFFERSIZE];
+extern float window[BUFFERSIZE];
 extern char flag;
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef*);
-extern unsigned short MovingAverage();
+extern unsigned short MovingAverage(int*, uint32_t);
+extern unsigned short delay(int*, uint32_t);
 extern unsigned short DFT();
 extern void CreateWaves();
+extern unsigned short convolution(int*, uint16_t);
+
+extern int adc_values[BUFFERSIZE];
 
 // timer.c
 extern void Set_sample_frequency(int);

@@ -54,7 +54,10 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 float cosinus[BUFFERSIZE];
 float sinus[BUFFERSIZE];
+float window[BUFFERSIZE];
 char flag = 0;
+
+int adc_values[BUFFERSIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -124,11 +127,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if(flag)
-	  {
-		  flag = 0;
-		  DFT();
-	  }
+
+#ifdef DFT_ENABLE
+	if(flag)
+	{
+		flag = 0;
+		DFT();
+	}
+#endif
   }
   /* USER CODE END 3 */
 }
