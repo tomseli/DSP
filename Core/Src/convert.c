@@ -200,8 +200,10 @@ void FFT(float* real, float* imag, int N)
 	for(k = 0; k < N2; k++)
 	{
 		// bereken de W^k, gebasseerd op e^(j*2*pi*/N)
-		float w_real = cos(2 * PI * k / N);
-		float w_imag = sin(2 * PI * k / N);
+//		float w_real = cos(2 * PI * k / N);
+//		float w_imag = sin(2 * PI * k / N);
+		float w_real = cosinus[k];
+		float w_imag = sinus[k];
 
 		// butterfly hocus pocus
 		float temp_real = w_real*real_odd[k] - w_imag*imag_odd[k];
