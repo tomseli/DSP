@@ -128,13 +128,12 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-#ifdef DFT_ENABLE
 	if(flag)
 	{
 		flag = 0;
-		DFT();
+		callFFT(adc_values, magnitude, BUFFERSIZE);
+//		DFT();
 	}
-#endif
   }
   /* USER CODE END 3 */
 }

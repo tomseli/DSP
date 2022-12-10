@@ -24,7 +24,7 @@ extern float cosinus[BUFFERSIZE];
 extern char flag;
 
 //temp global
-unsigned int magnitude[BUFFERSIZE/2+1];
+int magnitude[BUFFERSIZE/2+1];
 float windowed_sinc[BUFFERSIZE];
 
 // FFT
@@ -57,7 +57,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 		// duur draadje
 //		Put_DA((unsigned char) 0, adc_values[pos%BUFFERSIZE]);
 
-		Put_DA((unsigned char) 1, convolution(adc_values, pos));
+//		Put_DA((unsigned char) 1, convolution(adc_values, pos));
 
 #ifdef DFT_ENABLE
 		// voor debug: analoog signaal voor op de oscilloscoop, output L
@@ -168,6 +168,77 @@ unsigned short DFT()
 	}
 
 	return 1;
+}
+
+/**
+ * bereken de FFT op een N lengte array
+ */
+void FFT(float* real, float* imag, int N)
+{
+	// eindig recursive zodra N = 1;
+	if(N == 1)
+		return;
+
+	// variables
+	int N2 = N/2;
+	float real_even[N2], imag_even[N2], real_odd[N2], imag_odd[N2];
+	int i, k;
+
+	// splits de input in even en oneven delen (gebasseerd op indexes)
+	for(i = 0; i < N2; i++)
+	{
+		real_even[i] = real[2 * i];
+		imag_even[i] = imag[2 * i];
+		real_odd[i] = real[2 * i + 1];
+		imag_odd[i] = imag[2 * i + 1];
+	}
+
+	// recursieve FFT
+	FFT(real_even, imag_even, N/2);
+	FFT(real_odd, imag_odd, N/2);
+
+	for(k = 0; k < N2; k++)
+	{
+		// bereken de W^k, gebasseerd op e^(j*2*pi*/N)
+		float w_real = cos(2 * PI * k / N);
+		float w_imag = sin(2 * PI * k / N);
+
+		// butterfly hocus pocus
+		float temp_real = w_real*real_odd[k] - w_imag*imag_odd[k];
+		float temp_imag = w_real*imag_odd[k] + w_imag*real_odd[k];
+
+		real[k] = real_even[k] + temp_real;
+		imag[k] = imag_even[k] + temp_imag;
+
+		real[k + N2] = real_even[k] - temp_real;
+		imag[k + N2] = imag_even[k] - temp_imag;
+	}
+}
+
+
+/**
+ * Hulp functie om de FFT aan te roepen. Ontkoppeld inputs en outputs
+ */
+void callFFT(int* input, int* output, int N)
+{
+	float imag[N];
+	float real[N];
+
+	for(int i = 0; i < N; i++)
+	{
+		imag[i] = 0; // imag moet leeg zijn, is dit de snelste manier?
+		real[i] = (float) input[i]; // ontkoppel adc_output van real
+	}
+
+	FFT(real, imag, N);
+
+	for(int i = 0; i < N/2; i++)
+	{
+		output[i] = (int) sqrt(real[i]*real[i] + imag[i]+imag[i]);
+	}
+
+	// zet pd13, orangje lampje om runtime bij te houden
+	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
 }
 
 

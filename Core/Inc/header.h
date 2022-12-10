@@ -14,13 +14,13 @@
 #define SS1_GPIO_Port GPIOB
 
 // convert.c
-#define TIMERFREQ 20000
+#define TIMERFREQ 5210
 
-#define BUFFERSIZE 83 // max so far 70
+#define BUFFERSIZE 1024 // max so far 70
 #define BUFFERHALF 41  // vul in: (buffersize-1)/2
 #define MAF_KERNELSIZE 10
 #define OFFSET 0
-#define PI 3.141593
+#define PI 3.14159265359
 #define FREQUENCYCUTOFF 0.01 // fraction of samplerate
 
 extern ADC_HandleTypeDef hadc1;
@@ -38,7 +38,12 @@ extern unsigned short DFT();
 extern void CreateWaves();
 extern unsigned short convolution(int*, uint16_t);
 
+extern void FFT(float*, float*, int);
+extern void callFFT(int*, int*, int);
+
 extern int adc_values[BUFFERSIZE];
+extern int magnitude[BUFFERSIZE/2+1];
+#define DFT_ENABLE
 
 // timer.c
 extern void Set_sample_frequency(int);
