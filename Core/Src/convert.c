@@ -7,7 +7,6 @@
 #include "main.h"
 //#include "header.h"
 #include <math.h>
-#include <complex.h>
 
 extern TIM_HandleTypeDef htim3;
 extern ADC_HandleTypeDef hadc1;
@@ -55,9 +54,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 		adc_values[pos % BUFFERSIZE] = HAL_ADC_GetValue(&hadc1);
 
 		// duur draadje
-//		Put_DA((unsigned char) 0, adc_values[pos%BUFFERSIZE]);
+		Put_DA((unsigned char) 0, adc_values[pos%BUFFERSIZE]);
 
 //		Put_DA((unsigned char) 1, convolution(adc_values, pos));
+
 
 #ifdef DFT_ENABLE
 		// voor debug: analoog signaal voor op de oscilloscoop, output L
@@ -181,7 +181,8 @@ void FFT(float* real, float* imag, int N)
 
 	// variables
 	int N2 = N/2;
-	float real_even[N2], imag_even[N2], real_odd[N2], imag_odd[N2];
+	float real_even[N2], imag_even[N2],
+			real_odd[N2], imag_odd[N2];
 	int i, k;
 
 	// splits de input in even en oneven delen (gebasseerd op indexes)
@@ -202,8 +203,10 @@ void FFT(float* real, float* imag, int N)
 		// bereken de W^k, gebasseerd op e^(j*2*pi*/N)
 //		float w_real = cos(2 * PI * k / N);
 //		float w_imag = sin(2 * PI * k / N);
-		float w_real = cosinus[k];
-		float w_imag = sinus[k];
+		// N veranderd, dus LUT als bij DFT kan niet...
+		// misschien een A
+		float w_real = cosinus[(k*BUFFERSIZE/N)%BUFFERSIZE];
+		float w_imag = sinus[(k*BUFFERSIZE/N)%BUFFERSIZE];
 
 		// butterfly hocus pocus
 		float temp_real = w_real*real_odd[k] - w_imag*imag_odd[k];
@@ -229,7 +232,7 @@ void callFFT(int* input, int* output, int N)
 	for(int i = 0; i < N; i++)
 	{
 		imag[i] = 0; // imag moet leeg zijn, is dit de snelste manier?
-		real[i] = (float) input[i]; // ontkoppel adc_output van real
+		real[i] = (float) (input[i]-2048.0)/2048.0; // ontkoppel adc_output van real
 	}
 
 	FFT(real, imag, N);

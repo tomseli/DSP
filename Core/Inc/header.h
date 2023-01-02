@@ -48,6 +48,11 @@ extern int magnitude[BUFFERSIZE/2+1];
 // timer.c
 extern void Set_sample_frequency(int);
 
+// SPI.c
+extern SPI_HandleTypeDef hspi2;
+
+extern void SPI_send_byte();
+
 // main.c
 extern void Put_DA(unsigned char, unsigned short);
 extern uint32_t DWT_Delay_Init(void);
